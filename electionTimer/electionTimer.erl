@@ -33,14 +33,10 @@ loop(MinTimeout, MaxTimeout, TimerRef, ResponsePid) ->
             loop(MinTimeout, NewMaxTimeout, TimerRef, ResponsePid);
 
         startSignal -> 
-            case TimerRef == undefined of 
-                true -> 
-                    Timeout = randomTimeout(MinTimeout, MaxTimeout),
-                    NewTimerRef = erlang:send_after(Timeout, self(), electionTimeout),
-                    loop(MinTimeout, MaxTimeout, NewTimerRef, ResponsePid);
-                false -> 
-                    exit({error, "Timer already started"})
-            end;                
+            % no checks on TimerRef since when we call startTimer, it is always undefined
+            Timeout = randomTimeout(MinTimeout, MaxTimeout),
+            NewTimerRef = erlang:send_after(Timeout, self(), electionTimeout),
+            loop(MinTimeout, MaxTimeout, NewTimerRef, ResponsePid);           
         resetSignal -> 
             case TimerRef =/= undefined of 
                 true ->     
