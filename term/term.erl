@@ -1,5 +1,5 @@
 -module(term).
--export([start/0, inc/2, setTerm/2]).
+-export([start/0, inc/2, setTerm/2, getTerm/2]).
 
 % API
 start() ->
@@ -11,6 +11,10 @@ inc(Pid, ResponsePid) ->
 
 setTerm(Pid, NewTerm) ->
     Pid ! {set, NewTerm},
+    ok.
+
+getTerm(Pid, ResponsePid) -> 
+    Pid ! {get, ResponsePid},
     ok.
 
 % Internal loop
@@ -27,5 +31,9 @@ loop(Term) ->
                     loop(NewTerm);
                 false ->
                     loop(Term)
-            end
+            end;
+            
+        {get, ResponsePid} ->
+            ResponsePid ! {term, Term},
+            loop(Term)
     end.
