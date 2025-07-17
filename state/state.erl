@@ -33,7 +33,7 @@ loop(State, Term) ->
                                 false ->
                                     exit({error, "Heartbeat or Election timer or StopLeadership process not alive"})
                             end;    
-                        false ->
+                        _ ->
                             ok
                     end,
                     UpdatedTerm = NewTerm,
