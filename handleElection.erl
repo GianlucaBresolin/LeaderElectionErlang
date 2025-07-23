@@ -9,9 +9,10 @@ handleElection(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyI
 
     % increment the current term
     term:inc(TermPid, self()),
-    receive 
-        {term, NewTerm} -> NewTerm
-    end,
+    NewTerm =
+        receive 
+            {term, Value} -> Value
+        end,    
 
     % become a candidate 
     state:setCandidate(StatePid, NewTerm),
@@ -36,7 +37,7 @@ handleElection(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyI
 
 % Internal stuff
 askVoteLoop(NodeID, CandidateID, Term, VoteCountPid, BecomeLeaderPid) ->
-    Result = rpc:call(NodeID, askVoteRPC, askVote, [Term, CandidateID]),
+    Result = rpc:call(NodeID, voteRequestRPC, voteRequest, [Term, CandidateID]),
     case Result of 
         {badrpc, _} ->
             % retry (loop back to askVote)
