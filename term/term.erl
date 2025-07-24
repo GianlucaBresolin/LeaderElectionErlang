@@ -5,17 +5,21 @@
 start() ->
     spawn( fun() -> loop(0) end ).
 
-inc(Pid, ResponsePid) ->
-    Pid ! {inc, ResponsePid},
-    ok.
+inc(Pid) ->
+    Pid ! {inc, self()},
+    receive
+        {term, NewTerm} -> NewTerm
+    end.
 
 setTerm(Pid, NewTerm) ->
     Pid ! {set, NewTerm},
     ok.
 
-getTerm(Pid, ResponsePid) -> 
-    Pid ! {get, ResponsePid},
-    ok.
+getTerm(Pid) -> 
+    Pid ! {get, self()},
+    receive
+        {term, Term} -> Term
+    end.
 
 % Internal loop
 loop(Term) ->

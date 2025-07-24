@@ -13,9 +13,11 @@ setCandidate(Pid, Term) ->
     Pid ! {setCandidate, Term},
     ok.
 
-setLeader(Pid, Term, ResponsePid) ->
-    Pid ! {setLeader, Term, ResponsePid},
-    ok.
+setLeader(Pid, Term) ->
+    Pid ! {setLeader, Term, self()},
+    receive 
+        {becomeLeader, Response} -> Response
+    end.
 
 % Internal loop
 loop(State, Term) ->

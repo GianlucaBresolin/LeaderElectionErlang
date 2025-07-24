@@ -8,11 +8,7 @@ handleElection(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyI
     electionTimer:reset(ElectionTimerPid),
 
     % increment the current term
-    term:inc(TermPid, self()),
-    NewTerm =
-        receive 
-            {term, Value} -> Value
-        end,    
+    NewTerm = term:inc(TermPid, self()),   
 
     % become a candidate 
     state:setCandidate(StatePid, NewTerm),

@@ -19,11 +19,7 @@ loop(TermPid, StatePid, MyVotePid) ->
     receive
         {voteRequest, TermReq, CandidateID, ResponsePid} ->
             % get our current term
-            term:get(TermPid, self()),
-            CurrentTerm =
-                receive
-                    {term, Value} -> Value
-                end,    
+            CurrentTerm = term:getTerm(TermPid, self()),
                 
             if 
                 CurrentTerm > TermReq ->
