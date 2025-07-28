@@ -36,15 +36,15 @@ loop(TermPid, StatePid, MyVotePid) ->
                     % prooced to set our vote
                     ok
             end,
-        %try to set our vote
-        case myVote:setMyVote(MyVotePid, CandidateID, TermReq) of
-            false ->
-                % not grant the vote
-                ResponsePid ! {voteResponse, false},
-                loop(TermPid, StatePid, MyVotePid);
-            true ->
-                % grant the vote
-                ResponsePid ! {voteResponse, true},
-                loop(TermPid, StatePid, MyVotePid)
-        end
+            %try to set our vote
+            case myVote:setMyVote(MyVotePid, CandidateID, TermReq) of
+                false ->
+                    % not grant the vote
+                    ResponsePid ! {voteResponse, false},
+                    loop(TermPid, StatePid, MyVotePid);
+                true ->
+                    % grant the vote
+                    ResponsePid ! {voteResponse, true},
+                    loop(TermPid, StatePid, MyVotePid)
+            end
     end.
