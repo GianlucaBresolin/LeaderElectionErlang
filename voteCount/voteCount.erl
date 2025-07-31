@@ -18,18 +18,18 @@ reset(Pid, Term) ->
 % Internal loop
 loop(VoteCount, Term, VoterMap, LeaderFlag) ->
     receive 
-        {addVote, VoterID, NewTerm, BecomeLeaderPid} ->
-            case NewTerm < Term of 
+        {addVote, VoterID, TermReq, BecomeLeaderPid} ->
+            case TermReq < Term of 
                 true -> 
                     % stale request, ignore it
                     loop(VoteCount, Term, VoterMap, LeaderFlag);
                 false ->
                     {UpdatedTerm, UpdatedVoterMap, UpdatedLeaderFlag} =
-                        case NewTerm > Term of
+                        case TermReq > Term of
                             true ->
                                 % reset the vote count and update the term and leader flag
-                                {NewTerm, resetVoterMap(VoterMap), false};
-                            false ->  % NewTerm == Term
+                                {TermReq, resetVoterMap(VoterMap), false};
+                            false ->  % TermReq == Term
                                 {Term, VoterMap, LeaderFlag}
                         end,
                     case catch maps:get(VoterID, UpdatedVoterMap) of
@@ -46,7 +46,7 @@ loop(VoteCount, Term, VoterMap, LeaderFlag) ->
                                     case UpdatedVoteCount >= maps:size(UpdatedVoterMap) div 2 + 1 andalso not UpdatedLeaderFlag of 
                                         true ->
                                             % become leader
-                                            BecomeLeaderPid ! becomeLeader,
+                                            BecomeLeaderPid ! {becomeLeaderSignal, UpdatedTerm},
                                             loop(UpdatedVoteCount, UpdatedTerm, FinalVoterMap, true);
                                         false ->
                                             loop(UpdatedVoteCount, UpdatedTerm, FinalVoterMap, UpdatedLeaderFlag)
