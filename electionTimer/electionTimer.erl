@@ -42,12 +42,12 @@ loop(MinTimeout, MaxTimeout, TimerRef, ResponsePid) ->
                 true ->     
                     erlang:cancel_timer(TimerRef),
                     flushTimeout(), % clear the timer (if it ran out)
-                    Timeout = randomTimeout(MinTimeout, MaxTimeout),
-                    NewTimerRef = erlang:send_after(Timeout, self(), electionTimeout),
-                    loop(MinTimeout, MaxTimeout, NewTimerRef, ResponsePid);
-                false ->
-                    exit({error, "Timer not started"})
-            end;
+                _ -> 
+                    ok
+            end,
+            Timeout = randomTimeout(MinTimeout, MaxTimeout),
+            NewTimerRef = erlang:send_after(Timeout, self(), electionTimeout),
+            loop(MinTimeout, MaxTimeout, NewTimerRef, ResponsePid);
         stopSignal ->
             case TimerRef =/= undefined of 
                 true -> 
