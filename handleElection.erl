@@ -1,34 +1,51 @@
 -module(handleElection).
--export([handleElection/8]).
+-export([handleElection/9]).
 -define(RETRAY_DELAY, 20).
 
 % API
-handleElection(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, Nodes, BecomeLeaderPid) ->
+handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, Nodes, BecomeLeaderPid) ->
+    % check if the node is already a leader
+    case state:getState(StatePid) of
+        {ok, leader} ->
+            % already the leader, exit
+            exit({error, "Already a leader"});
+        _ -> 
+            % proceed with the election process
+            ok
+    end,
+    
     % reset the election timer to resolve split-votes
-    electionTimer:reset(ElectionTimerPid),
+    electionTimer:reset(ElectionTimerPid, ElectionTerm),
 
-    % increment the current term
-    NewTerm = term:inc(TermPid, self()),   
+    % set the new term
+    case term:setTerm(TermPid, ElectionTerm) of
+        {ok, true} ->
+            % term set successfully, proceed
+            ok;
+        {ok, false} ->
+            % term not set, exit
+            exit({error, "Failed to set term"})
+    end,
 
     % become a candidate 
-    state:setCandidate(StatePid, NewTerm),
+    state:setCandidate(StatePid, ElectionTerm),
 
     % reset the vote count
-    voteCount:reset(VoteCountPid, NewTerm),
+    voteCount:reset(VoteCountPid, ElectionTerm),
 
     % set my vote for self
-    case myVote:setMyVote(MyVotePid, MyID, NewTerm) of
+    case myVote:setMyVote(MyVotePid, MyID, ElectionTerm) of
         false ->
-            state:setFollower(StatePid, none, ElectionTimerPid, none, NewTerm);
+            state:setFollower(StatePid, none, ElectionTimerPid, none, ElectionTerm);
         _ ->
             ok
     end,
 
     % add my vote to the vote count
-    voteCount:addVote(VoteCountPid, MyID, NewTerm, BecomeLeaderPid),
+    voteCount:addVote(VoteCountPid, MyID, ElectionTerm, BecomeLeaderPid),
 
     % send vote requests to all other nodes (in parallel)
-    [spawn(fun() -> askVoteLoop(NodeID, MyID, NewTerm, VoteCountPid, BecomeLeaderPid) end) || NodeID <- Nodes],
+    [spawn(fun() -> askVoteLoop(NodeID, MyID, ElectionTerm, VoteCountPid, BecomeLeaderPid) end) || NodeID <- Nodes],
     ok.
 
 % Internal stuff
@@ -49,5 +66,4 @@ askVoteLoop(NodeID, CandidateID, Term, VoteCountPid, BecomeLeaderPid) ->
                     % vote not granted
                     ok
             end
-    end,
-    ok.
+    end.

@@ -5,15 +5,11 @@
 start() ->
     spawn( fun() -> loop(0) end ).
 
-inc(Pid) ->
-    Pid ! {inc, self()},
-    receive
-        {term, NewTerm} -> NewTerm
-    end.
-
 setTerm(Pid, NewTerm) ->
-    Pid ! {set, NewTerm},
-    ok.
+    Pid ! {set, NewTerm, self()},
+    receive
+        {success, Result} -> Result
+    end.
 
 getTerm(Pid) -> 
     Pid ! {get, self()},
@@ -29,11 +25,13 @@ loop(Term) ->
             ResponsePid ! {term, NewTerm},
             loop(NewTerm);
             
-        {set, NewTerm} ->
+        {set, NewTerm, ResponsePid} ->
             case NewTerm > Term of
                 true ->
+                    ResponsePid ! {success, true},
                     loop(NewTerm);
                 false ->
+                    ResponsePid ! {success, false},
                     loop(Term)
             end;
             
