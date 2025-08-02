@@ -1,9 +1,9 @@
 -module(heartbeatRequestRPC).
--export([startServer/4, heartbeatRequest/2]).
+-export([startServer/5, heartbeatRequest/2]).
 
 % API
-startServer(TermPid, StatePid, CurrentLeaderPid, MyVotePid) ->
-    Pid = spawn(fun() -> loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid) end),
+startServer(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
+    Pid = spawn(fun() -> loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) end),
     register(heartbeatRequestLoop, Pid),
     {ok, Pid}.
 
@@ -15,7 +15,7 @@ heartbeatRequest(Term, LeaderID) ->
     end.
 
 % Internal loop
-loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid) ->
+loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
     receive 
         {heartbeatRequest, TermReq, LeaderID, ResponsePid} ->
             % get our current term
@@ -25,19 +25,32 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid) ->
                 CurrentTerm > TermReq ->
                     % stale request, not granting heartbeat
                     ResponsePid ! {heartbeatResponse, false},
-                    loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid); 
+                    loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid);
                 CurrentTerm < TermReq ->
                     % update our term, revert to follower state, and reset our vote (to update it to the best term)
-                    term:setTerm(TermPid, TermReq),
-                    state:setFollower(StatePid, none, none, none, TermReq),
-                    myVote:resetMyVote(MyVotePid, TermReq);
-                    % proceed to set the current leader
+                    case term:setTerm(TermPid, TermReq) of
+                        {ok, true} ->
+                            state:setFollower(StatePid, none, none, none, TermReq),
+                            myVote:resetMyVote(MyVotePid, TermReq);
+                        {ok, false} -> % in the while, another request came in with >= term, ignore this one
+                            ResponsePid ! {heartbeatResponse, false},
+                            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid)
+                    end;
                 CurrentTerm == TermReq ->
                     % proceed to set the current leader
                     ok
             end,
 
             % try to set the current leader
-            ResponsePid ! {heartbeatResponse, (LeaderID == state:setCurrentLeader(CurrentLeaderPid, LeaderID))},
-            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid)
+            Success = 
+                case LeaderID == state:setCurrentLeader(CurrentLeaderPid, LeaderID) of
+                    true ->
+                        % reset the election timer
+                        electionTimer:resetTimer(ElectionTimerPid, TermReq),
+                        true;
+                    false ->
+                        false
+                end,    
+            ResponsePid ! {heartbeatResponse, Success},
+            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid)
     end.

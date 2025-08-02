@@ -28,10 +28,15 @@ loop(TermPid, StatePid, MyVotePid) ->
                     loop(TermPid, StatePid, MyVotePid);
                 CurrentTerm > TermReq ->
                     % update our term
-                    term:setTerm(TermPid, TermReq),
-                    % revert to follower state
-                    state:setFollower(StatePid, none, none, none, TermReq);
-                    % proceed to set our vote
+                    case term:setTerm(TermPid, TermReq) of 
+                        true ->
+                            % revert to follower state
+                            state:setFollower(StatePid, none, none, none, TermReq);
+                            % proceed to set our vote
+                        false -> % in the while, another request came in with >= term, ignore this one
+                            ResponsePid ! {voteResponse, false},
+                            loop(TermPid, StatePid, MyVotePid)
+                    end;
                 CurrentTerm == TermReq ->
                     % prooced to set our vote
                     ok
