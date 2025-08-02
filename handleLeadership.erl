@@ -1,11 +1,12 @@
 -module(handleLeadership).
 -export([handleLeadership/5]).
 -define(RETRAY_DELAY, 20).
+-define(HEARTBEAT_TIMEOUT, 20).
 
 % API
 handleLeadership(ElectionTimerPid, StatePid, Nodes, Term, MyID) ->
     % stop the election timer
-    electionTimer:stop(ElectionTimerPid),
+    electionTimer:stopTimer(ElectionTimerPid, Term),
 
     % set the state to leader
     case state:setLeader(StatePid, Term) of
@@ -14,7 +15,7 @@ handleLeadership(ElectionTimerPid, StatePid, Nodes, Term, MyID) ->
             ok;
         {ok, false} ->
             % restart the election timer before exiting
-            electionTimer:reset(ElectionTimerPid),
+            electionTimer:reset(ElectionTimerPid, Term),
             exit({error, "Failed to set leader state"});
         {error, Reason} ->
             exit({error, Reason})
@@ -38,7 +39,7 @@ handleLeadershipLoop(LeaderID, Term, Nodes, StatePid, ElectionTimerPid) ->
         {stopLeadership} ->
             % stop handleLeadership loop
             ok
-        after 10 ->
+        after ?HEARTBEAT_TIMEOUT ->
             % send heartbeats to all nodes after timeout
             handleLeadershipLoop(LeaderID, Term, Nodes, StatePid, ElectionTimerPid)
     end.

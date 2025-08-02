@@ -15,7 +15,7 @@ handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, 
     end,
     
     % reset the election timer to resolve split-votes
-    electionTimer:reset(ElectionTimerPid, ElectionTerm),
+    electionTimer:resetTimer(ElectionTimerPid, ElectionTerm),
 
     % set the new term
     case term:setTerm(TermPid, ElectionTerm) of
