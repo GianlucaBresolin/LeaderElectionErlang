@@ -32,7 +32,7 @@ loop(TermPid, StatePid, MyVotePid) ->
                         true ->
                             % revert to follower state
                             state:setFollower(StatePid, none, none, none, TermReq);
-                            % proceed to set our vote
+                            % proceed to set our vote (not necessary to reset myVote here)
                         false -> % in the while, another request came in with >= term, ignore this one
                             ResponsePid ! {voteResponse, false},
                             loop(TermPid, StatePid, MyVotePid)
@@ -41,7 +41,7 @@ loop(TermPid, StatePid, MyVotePid) ->
                     % prooced to set our vote
                     ok
             end,
-            %try to set our vote
+            %try to set our vote (it will update myVote term automatically)
             case myVote:setMyVote(MyVotePid, CandidateID, TermReq) of
                 false ->
                     % not grant the vote

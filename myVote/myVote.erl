@@ -29,6 +29,7 @@ loop(MyVote, Term) ->
                     ResponsePid ! {operation, true},
                     loop(Vote, NewTerm)
             end;
+        
         {reset, ResetTerm} ->
             case ResetTerm > Term of
                 true -> 

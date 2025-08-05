@@ -21,6 +21,7 @@ handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, 
     case term:setTerm(TermPid, ElectionTerm) of
         {ok, true} ->
             % term set successfully, proceed
+            % (not necessary to reset  myVote here)
             ok;
         {ok, false} ->
             % term not set, exit
@@ -33,7 +34,7 @@ handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, 
     % reset the vote count
     voteCount:reset(VoteCountPid, ElectionTerm),
 
-    % set my vote for self
+    % set my vote for self (it will update myVote term automatically)
     case myVote:setMyVote(MyVotePid, MyID, ElectionTerm) of
         false ->
             state:setFollower(StatePid, none, ElectionTimerPid, none, ElectionTerm);
