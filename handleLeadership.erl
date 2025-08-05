@@ -10,52 +10,54 @@ handleLeadership(ElectionTimerPid, StatePid, Nodes, Term, MyID) ->
 
     % set the state to leader
     case state:setLeader(StatePid, Term) of
-        {ok, true} ->
-            % proceed with leadership
-            ok;
-        {ok, false} ->
+        false ->
             % restart the election timer before exiting
             electionTimer:reset(ElectionTimerPid, Term),
             exit({error, "Failed to set leader state"});
-        {error, Reason} ->
-            exit({error, Reason})
+        true ->
+            % leader state set successfully, proceed
+            ok
     end,
 
     spawn(
         fun() -> 
-            handleLeadershipLoop(MyID, Term, Nodes, StatePid, ElectionTimerPid)
+            handleLeadershipLoop(MyID, Term, Nodes, StatePid)
         end).
 
 % Internal stuff
-handleLeadershipLoop(LeaderID, Term, Nodes, StatePid, ElectionTimerPid) ->
+handleLeadershipLoop(LeaderID, Term, Nodes, StatePid) ->
     % provide heartbeats to all nodes
     [spawn(
         fun() -> 
-            sendHeartbeatLoop(NodeID, LeaderID, Term, StatePid, ElectionTimerPid)
+            sendHeartbeatLoop(NodeID, LeaderID, Term, StatePid)
         end) 
     || NodeID <- Nodes],
 
     receive
-        {stopLeadership} ->
-            % stop handleLeadership loop
-            ok
         after ?HEARTBEAT_TIMEOUT ->
-            % send heartbeats to all nodes after timeout
-            handleLeadershipLoop(LeaderID, Term, Nodes, StatePid, ElectionTimerPid)
+            % check if we are still the leader 
+            case state:getState(StatePid, Term) of
+                leader ->
+                    % send heartbeats to all nodes after timeout
+                    handleLeadershipLoop(LeaderID, Term, Nodes, StatePid);
+                _ ->
+                    % we are no longer the leader, normal exit
+                    ok
+            end
     end.
 
-sendHeartbeatLoop(NodeID, LeaderID, Term, StatePid, ElectionTimerPid) ->
+sendHeartbeatLoop(NodeID, LeaderID, Term, StatePid) ->
     Result = rpc:call(NodeID, heartbeatRPC, heartbeat, [Term, LeaderID]),
     case Result of
         {badrpc, _} ->
             % retry (loop back to sendHeartbeat)
             timer:sleep(?RETRAY_DELAY), % avoid busy waiting
-            sendHeartbeatLoop(NodeID, LeaderID, Term, StatePid, ElectionTimerPid);
+            sendHeartbeatLoop(NodeID, LeaderID, Term, StatePid);
         {ok, Response} ->
             case Response of
                 false ->
                     % heartbeat not acknowledged, rever to follower state
-                    state:setFollower(StatePid, ElectionTimerPid, self(), Term);
+                    state:setFollower(StatePid, Term);
                 _ ->
                     % heartbeat acknowledged, do nothing
                     ok

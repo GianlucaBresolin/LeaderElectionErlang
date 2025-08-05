@@ -29,7 +29,14 @@ handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, 
     end,
 
     % become a candidate 
-    state:setCandidate(StatePid, ElectionTerm),
+    case state:setCandidate(StatePid, ElectionTerm) of
+        false ->
+            % not a candidate, exit
+            exit({error, "Failed to become candidate"});
+        true ->
+            % candidate state set successfully, proceed
+            ok
+    end,
 
     % reset the vote count
     voteCount:reset(VoteCountPid, ElectionTerm),
@@ -37,7 +44,7 @@ handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, 
     % set my vote for self (it will update myVote term automatically)
     case myVote:setMyVote(MyVotePid, MyID, ElectionTerm) of
         false ->
-            state:setFollower(StatePid, none, ElectionTimerPid, none, ElectionTerm);
+            state:setFollower(StatePid, ElectionTerm);
         _ ->
             ok
     end,

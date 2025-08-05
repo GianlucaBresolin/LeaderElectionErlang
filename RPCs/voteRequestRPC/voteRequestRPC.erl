@@ -31,7 +31,7 @@ loop(TermPid, StatePid, MyVotePid) ->
                     case term:setTerm(TermPid, TermReq) of 
                         true ->
                             % revert to follower state
-                            state:setFollower(StatePid, none, none, none, TermReq);
+                            state:setFollower(StatePid, TermReq);
                             % proceed to set our vote (not necessary to reset myVote here)
                         false -> % in the while, another request came in with >= term, ignore this one
                             ResponsePid ! {voteResponse, false},

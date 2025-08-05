@@ -30,7 +30,7 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
                     % update our term, revert to follower state, and reset our vote (to update it to the fresher term)
                     case term:setTerm(TermPid, TermReq) of
                         {ok, true} ->
-                            state:setFollower(StatePid, none, none, none, TermReq),
+                            state:setFollower(StatePid, TermReq),
                             myVote:resetMyVote(MyVotePid, TermReq);
                         {ok, false} -> % in the while, another request came in with >= term, ignore this one
                             ResponsePid ! {heartbeatResponse, false},
