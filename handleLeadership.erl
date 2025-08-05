@@ -37,7 +37,7 @@ handleLeadershipLoop(LeaderID, Term, Nodes, StatePid) ->
         after ?HEARTBEAT_TIMEOUT ->
             % check if we are still the leader 
             case state:getState(StatePid, Term) of
-                leader ->
+                {leader, StateTerm} when StateTerm == Term ->
                     % send heartbeats to all nodes after timeout
                     handleLeadershipLoop(LeaderID, Term, Nodes, StatePid);
                 _ ->

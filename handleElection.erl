@@ -5,10 +5,12 @@
 % API
 handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, Nodes, BecomeLeaderPid) ->
     % check if the node is already a leader
-    case state:getState(StatePid) of
-        {ok, leader} ->
-            % already the leader, exit
-            exit({error, "Already a leader"});
+    case state:getState(StatePid, ElectionTerm) of
+        {leader, _}
+            % already the leader, exit election
+            exit({error, "Already a leader."});
+        {_, StateTerm} when StateTerm =/= ElectionTerm ->
+            exit({error, "State term mismatch."});
         _ -> 
             % proceed with the election process
             ok

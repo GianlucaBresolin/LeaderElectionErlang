@@ -76,7 +76,7 @@ loop(State, Term) ->
                         end,
                         leader;
                     NewTerm < Term ->
-                        ResponsePid ! {becomeLeader, false} % not a valid term for becoming leader
+                        ResponsePid ! {becomeLeader, false}, % not a valid term for becoming leader
                         State                    
                 end,
             loop(UpdatedState, erlang:max(Term, NewTerm));
