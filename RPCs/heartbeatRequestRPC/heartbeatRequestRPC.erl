@@ -31,6 +31,7 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
                     case term:setTerm(TermPid, TermReq) of
                         {ok, true} ->
                             state:setFollower(StatePid, TermReq),
+                            electionTimer:resetTimer(ElectionTimerPid, TermReq),
                             myVote:resetMyVote(MyVotePid, TermReq);
                         {ok, false} -> % in the while, another request came in with >= term, ignore this one
                             ResponsePid ! {heartbeatResponse, false},

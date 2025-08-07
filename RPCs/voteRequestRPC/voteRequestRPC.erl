@@ -1,9 +1,9 @@
 -module(voteRequestRPC).
--export([startServer/3, voteRequest/2]).
+-export([startServer/4, voteRequest/2]).
 
 % API
-startServer(TermPid, StatePid, MyVotePid) ->
-    Pid = spawn(fun() -> loop(TermPid, StatePid, MyVotePid) end),
+startServer(TermPid, StatePid, ElectionTimerPid, MyVotePid) ->
+    Pid = spawn(fun() -> loop(TermPid, StatePid, ElectionTimerPid, MyVotePid) end),
     register(voteRequestLoop, Pid),
     {ok, Pid}.
 
@@ -15,7 +15,7 @@ voteRequest(Term, CandidateID) ->
     end.
 
 % Internal loop
-loop(TermPid, StatePid, MyVotePid) ->
+loop(TermPid, StatePid, ElectionTimerPid, MyVotePid) ->
     receive
         {voteRequest, TermReq, CandidateID, ResponsePid} ->
             % get our current term
@@ -25,17 +25,18 @@ loop(TermPid, StatePid, MyVotePid) ->
                 CurrentTerm > TermReq ->
                     % stale request, not granting vote
                     ResponsePid ! {voteResponse, false},
-                    loop(TermPid, StatePid, MyVotePid);
+                    loop(TermPid, StatePid, ElectionTimerPid, MyVotePid);
                 CurrentTerm > TermReq ->
                     % update our term
                     case term:setTerm(TermPid, TermReq) of 
                         true ->
                             % revert to follower state
-                            state:setFollower(StatePid, TermReq);
+                            state:setFollower(StatePid, TermReq),
+                            electionTimer:reset(ElectionTimerPid, TermReq);
                             % proceed to set our vote (not necessary to reset myVote here)
                         false -> % in the while, another request came in with >= term, ignore this one
                             ResponsePid ! {voteResponse, false},
-                            loop(TermPid, StatePid, MyVotePid)
+                            loop(TermPid, StatePid, ElectionTimerPid, MyVotePid)
                     end;
                 CurrentTerm == TermReq ->
                     % prooced to set our vote
@@ -46,10 +47,10 @@ loop(TermPid, StatePid, MyVotePid) ->
                 false ->
                     % not grant the vote
                     ResponsePid ! {voteResponse, false},
-                    loop(TermPid, StatePid, MyVotePid);
+                    loop(TermPid, StatePid, ElectionTimerPid, MyVotePid);
                 true ->
                     % grant the vote
                     ResponsePid ! {voteResponse, true},
-                    loop(TermPid, StatePid, MyVotePid)
+                    loop(TermPid, StatePid, ElectionTimerPid, MyVotePid)
             end
     end.

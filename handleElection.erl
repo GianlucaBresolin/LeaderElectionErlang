@@ -6,7 +6,7 @@
 handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, Nodes, BecomeLeaderPid) ->
     % check if the node is already a leader
     case state:getState(StatePid, ElectionTerm) of
-        {leader, _}
+        {leader, _} ->
             % already the leader, exit election
             exit({error, "Already a leader."});
         {_, StateTerm} when StateTerm =/= ElectionTerm ->
