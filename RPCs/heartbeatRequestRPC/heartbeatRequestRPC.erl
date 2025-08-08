@@ -44,14 +44,18 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
 
             % try to set the current leader
             Success = 
-                case LeaderID == state:setCurrentLeader(CurrentLeaderPid, LeaderID) of
+                case LeaderID == state:setCurrentLeader(CurrentLeaderPid, TermReq, LeaderID) of
                     true ->
-                        % reset the election timer
+                        % Valid heartbeat, reset the election timer and disallow votes
                         electionTimer:resetTimer(ElectionTimerPid, TermReq),
+                        voteRequestLoop ! {allowVotes, false},
                         true;
                     false ->
                         false
                 end,    
             ResponsePid ! {heartbeatResponse, Success},
             loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid)
+        after ?MIN_HEARTBEAT_TIMEOUT ->
+            % allow votes: possibly the leader is gone
+            voteRequestLoop ! {allowVotes, true}
     end.

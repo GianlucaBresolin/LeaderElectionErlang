@@ -23,15 +23,15 @@ init(MyID, ConfigurationList) ->
     heartbeatRequestRPC:startServer(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid),
 
     % call the main loop to handle elections and leaderships
-    loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList, none).
+    loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList).
 
 % Internal loop
-loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList, HandleElectionPid) ->
+loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList) ->
     receive
         {electionTimeoutSignal, ElectionTerm} ->
             % Start the election process
             handleElection:handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList)
-            loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList, HandleElectionPid);
+            loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList);
         {becomeLeaderSignal, LeadershipTerm} ->
             % Start the leader process
             handleLeadership:handleLeadership(ElectionTimerPid, StatePid, ConfigurationList, LeadershipTerm, MyID),
