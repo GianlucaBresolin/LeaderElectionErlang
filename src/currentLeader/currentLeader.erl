@@ -3,7 +3,7 @@
 
 % API
 start() ->
-    spawn(fun() -> loop(undefined, 0) end).
+    spawn_link(fun() -> loop(undefined, 0) end).
 
 setCurrentLeader(Pid, Term, Leader) ->
     Pid ! {setCurrentLeader, self(), Term, Leader},

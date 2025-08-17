@@ -3,7 +3,7 @@
 
 % API
 startTimer(ResponsePid) ->  
-    Pid = spawn(fun() -> loop(150, 300, undefined, 0, ResponsePid) end), % default min = 150, max = 300
+    Pid = spawn_link(fun() -> loop(150, 300, undefined, 0, ResponsePid) end), % default min = 150, max = 300
     Pid ! startSignal,
     Pid.
     

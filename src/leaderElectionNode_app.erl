@@ -1,14 +1,21 @@
--module(node).
--export([start/1]).
+%%%-------------------------------------------------------------------
+%% @doc leaderElectionErlang public API
+%% @end
+%%%-------------------------------------------------------------------
 
-% API
-start(MyID, ConfigurationList) ->
-    spawn(
-        fun() ->
-            init(MyID, ConfigurationList)
-        end).
+-module(leaderElectionNode_app).
 
-% Internal initialization
+-behaviour(application).
+
+-export([start/2, stop/1]).
+
+start(_StartType, _StartArgs) ->
+    leaderElectionNode_sup:start_link().
+
+stop(_State) ->
+    ok.
+
+% Internal function
 init(MyID, ConfigurationList) ->
     % Initialize node's components
     {ok, TermPid} = term:start(),
@@ -30,10 +37,10 @@ loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, Configu
     receive
         {electionTimeoutSignal, ElectionTerm} ->
             % Start the election process
-            handleElection:handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList)
+            handleElection:handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList),
             loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList);
         {becomeLeaderSignal, LeadershipTerm} ->
             % Start the leader process
             handleLeadership:handleLeadership(ElectionTimerPid, StatePid, ConfigurationList, LeadershipTerm, MyID),
-            loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList);
+            loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList)
     end.

@@ -1,9 +1,10 @@
 -module(heartbeatRequestRPC).
 -export([startServer/5, heartbeatRequest/2]).
+-define(MIN_HEARTBEAT_TIMEOUT, 150).
 
 % API
 startServer(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
-    Pid = spawn(fun() -> loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) end),
+    Pid = spawn_link(fun() -> loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) end),
     register(heartbeatRequestLoop, Pid),
     {ok, Pid}.
 

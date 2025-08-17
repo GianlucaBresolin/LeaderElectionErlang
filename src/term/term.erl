@@ -1,9 +1,9 @@
 -module(term).
--export([start/0, inc/2, setTerm/2, getTerm/2]).
+-export([start/0, setTerm/2, getTerm/1]).
 
 % API
 start() ->
-    spawn( fun() -> loop(0) end ).
+    spawn_link( fun() -> loop(0) end ).
 
 setTerm(Pid, NewTerm) ->
     Pid ! {set, NewTerm, self()},

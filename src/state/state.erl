@@ -3,7 +3,7 @@
 
 % API
 start() ->
-    spawn(fun() -> loop(follower, 0) end).
+    spawn_link(fun() -> loop(follower, 0) end).
 
 setFollower(Pid, Term) ->
     Pid ! {setFollower, Term},

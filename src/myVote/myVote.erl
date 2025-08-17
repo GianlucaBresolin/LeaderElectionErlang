@@ -3,7 +3,7 @@
 
 % API
 start() ->
-    spawn(fun() -> loop(undefined, 0) end).
+    spawn_link(fun() -> loop(undefined, 0) end).
 
 setMyVote(Pid, Vote, Term) -> 
     Pid ! {setMyVote, Vote, Term, self()},

@@ -5,7 +5,7 @@
 start(ConfigurationList) ->
     VoterList = lists:map(fun(VoterID) -> {VoterID, 0} end, ConfigurationList),
     VoterMap = maps:from_list(VoterList),
-    spawn( fun() -> loop(0, 0, VoterMap, false) end ).
+    spawn_link( fun() -> loop(0, 0, VoterMap, false) end ).
 
 addVote(Pid, VoterID, Term, BecomeLeaderPid) ->
     Pid ! {addVote, VoterID, Term, BecomeLeaderPid},

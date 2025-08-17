@@ -3,7 +3,7 @@
 
 % API
 startServer(TermPid, StatePid, ElectionTimerPid, MyVotePid) ->
-    Pid = spawn(fun() -> loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, true) end),
+    Pid = spawn_link(fun() -> loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, true) end),
     register(voteRequestLoop, Pid),
     {ok, Pid}.
 
@@ -61,5 +61,5 @@ loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes) ->
                     end
             end;
         {allowVotes, Value} ->
-            loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, Value);
+            loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, Value)
     end.
