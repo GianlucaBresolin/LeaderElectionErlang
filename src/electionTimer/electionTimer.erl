@@ -3,7 +3,8 @@
 
 % API
 startTimer(ResponsePid) ->  
-    Pid = spawn_link(fun() -> loop(150, 300, undefined, 0, ResponsePid) end), % default min = 150, max = 300
+    % default min = 150, max = 300
+    Pid = spawn_link(fun() -> loop(150, 300, undefined, 0, ResponsePid) end), 
     Pid ! startSignal,
     Pid.
     
@@ -12,8 +13,10 @@ resetTimer(Pid, Term) ->
     ok.
 
 stopTimer(Pid, Term) ->
-    Pid ! {stopSignal, Term},
-    ok.
+    Pid ! {stopSignal, self(), Term},
+    receive 
+        {stopTimerSuccess, Success} -> Success
+    end.
 
 setMinTimeout(Pid, MinTimeout) ->
     Pid ! {minTimeout, MinTimeout},
@@ -45,26 +48,33 @@ loop(MinTimeout, MaxTimeout, TimerRef, Term, ResponsePid) ->
                     case TimerRef =/= undefined of 
                         true ->     
                             erlang:cancel_timer(TimerRef),
-                            flushTimeout(); % clear the timer (if it ran out)
+                            % clear the timer (if it ran out)
+                            flushTimeout(); 
                         _ -> 
                             ok
                     end,
                     Timeout = randomTimeout(MinTimeout, MaxTimeout),
                     NewTimerRef = erlang:send_after(Timeout, self(), electionTimeout);
-                false -> % stale request, ignore it
+                false -> 
+                    % stale request, ignore it
                     NewTimerRef = TimerRef
             end,
             loop(MinTimeout, MaxTimeout, NewTimerRef, erlang:max(TermReq, Term), ResponsePid);
 
-        {stopSignal, TermReq} ->
+        {stopSignal, From, TermReq} ->
             case TimerRef =/= undefined andalso TermReq >= Term of 
                 true -> 
                     erlang:cancel_timer(TimerRef),
-                    flushTimeout(), % clear the timer (if it ran out)
-                    loop(MinTimeout, MaxTimeout, undefined, erlang:max(TermReq, Term), ResponsePid);
-                false -> % stale request or no timer is currently running, ignore it
-                    loop(MinTimeout, MaxTimeout, TimerRef, erlang:max(TermReq, Term), ResponsePid)
-            end;
+                    % clear the timer (if it ran out)
+                    flushTimeout(), 
+                    From ! {stopTimerSuccess, true},
+                    UpdatedTimerRef = undefined;
+                false -> 
+                    % stale request or no timer is currently running, ignore it
+                    From ! {stopTimerSuccess, false},
+                    UpdatedTimerRef = TimerRef;
+            end,
+            loop(MinTimeout, MaxTimeout, UpdatedTimerRef, erlang:max(TermReq, Term), ResponsePid)
 
         electionTimeout -> 
             % provide the election timeout signal and election term
