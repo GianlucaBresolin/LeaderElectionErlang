@@ -1,5 +1,5 @@
 -module(voteCount).
--export([start/1, addVote/4, reset/2]).
+-export([start/1, addVote/4]).
 
 % API
 start(ConfigurationList) ->
@@ -9,10 +9,6 @@ start(ConfigurationList) ->
 
 addVote(Pid, VoterID, Term, BecomeLeaderPid) ->
     Pid ! {addVote, VoterID, Term, BecomeLeaderPid},
-    ok.
-
-reset(Pid, Term) ->
-    Pid ! {reset, Term},
     ok.
 
 % Internal loop
@@ -54,16 +50,6 @@ loop(VoteCount, Term, VoterMap, LeaderFlag) ->
                             end
                     end
             end;
-                                
-        {reset, NewTerm} ->
-            case NewTerm > Term of
-                true ->
-                    UpdatedVoterMap = resetVoterMap(VoterMap),
-                    loop(0, NewTerm, UpdatedVoterMap, false);
-                false ->
-                    % the reset for that term has already been done, ignore
-                    loop(VoteCount, Term, VoterMap, LeaderFlag)
-            end
     end.
 
 % Helper function
