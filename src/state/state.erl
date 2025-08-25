@@ -6,19 +6,21 @@ start() ->
     spawn_link(fun() -> loop(follower, 0) end).
 
 setFollower(Pid, Term) ->
-    Pid ! {setFollower, Term},
-    ok.
+    Pid ! {setFollower, Term, self()},
+    receive
+        {becomeFollowerSuccess, Success} -> Success
+    end.
 
 setCandidate(Pid, Term) ->
     Pid ! {setCandidate, Term, self()},
     receive
-        {becomeCandidate, Response} -> Response
+        {becomeCandidateSuccess, Success} -> Success
     end.
 
 setLeader(Pid, Term) ->
     Pid ! {setLeader, Term, self()},
     receive 
-        {becomeLeader, Response} -> Response
+        {becomeLeaderSuccess, Response} -> Response
     end.
 
 getState(Pid) ->
@@ -30,11 +32,20 @@ getState(Pid) ->
 % Internal loop
 loop(State, Term) ->
     receive
-        {setFollower, NewTerm} ->
+        {setFollower, NewTerm, From} ->
             UpdatedState =
                 case NewTerm >= Term of 
-                    true -> follower;
-                    false -> State
+                    true -> 
+                        case State of 
+                            follower -> 
+                                From ! {becomeFollowerSuccess, false};
+                            _ ->
+                                From ! {becomeFollowerSuccess, true}
+                        end,
+                        follower;
+                    false -> 
+                        From ! {becomeFollowerSuccess, false},
+                        State
                 end,
             loop(UpdatedState, erlang:max(Term, NewTerm));
 
@@ -49,12 +60,9 @@ loop(State, Term) ->
                             follower -> 
                                 ResponsePid ! {becomeCandidate, true},
                                 candidate;
-                            candidate -> 
+                            _ -> 
                                 ResponsePid ! {becomeCandidate, false}, 
-                                candidate;
-                            leader -> 
-                                ResponsePid ! {becomeCandidate, false},
-                                leader
+                                State
                         end;
                     NewTerm < Term ->
                         State
@@ -72,11 +80,13 @@ loop(State, Term) ->
                             true ->
                                 ResponsePid ! {becomeLeader, true};
                             false ->
-                                ResponsePid ! {becomeLeader, false} % already leader
+                                % already leader
+                                ResponsePid ! {becomeLeader, false} 
                         end,
                         leader;
                     NewTerm < Term ->
-                        ResponsePid ! {becomeLeader, false}, % not a valid term for becoming leader
+                        % stale request
+                        ResponsePid ! {becomeLeader, false}, 
                         State                    
                 end,
             loop(UpdatedState, erlang:max(Term, NewTerm));
