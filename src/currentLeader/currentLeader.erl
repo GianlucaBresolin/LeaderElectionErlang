@@ -8,7 +8,7 @@ start() ->
 setCurrentLeader(Pid, Term, Leader) ->
     Pid ! {setCurrentLeader, self(), Term, Leader},
     receive
-        {currentLeader, LeaderName} -> LeaderName
+        {currentLeader, LeaderName, LeaderTerm} -> {LeaderName, LeaderTerm}
     end.
 
 reset(Pid, Term) ->
@@ -30,13 +30,13 @@ loop(CurrentLeader, CurrentTerm) ->
                         end
                 end,
             NewTerm = erlang:max(CurrentTerm, Term),
-            From ! {currentLeader, NewLeader},
+            From ! {currentLeader, NewLeader, NewTerm},
             loop(NewLeader, NewTerm);
         
         % reset current leader
-        {reset, Term} ->
-            NewState = case Term > CurrentTerm of
-                           true -> {undefined, Term};
+        {reset, NewTerm} ->
+            NewState = case NewTerm > CurrentTerm of
+                           true -> {undefined, NewTerm};
                            false -> {CurrentLeader, CurrentTerm}
                        end,
             loop(element(1, NewState), element(2, NewState))
