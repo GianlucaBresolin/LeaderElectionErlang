@@ -20,20 +20,14 @@ getTerm(Pid) ->
 % Internal loop
 loop(Term) ->
     receive
-        {inc, ResponsePid} ->
-            NewTerm = Term + 1,
-            ResponsePid ! {term, NewTerm},
-            loop(NewTerm);
-            
         {set, NewTerm, ResponsePid} ->
-            case NewTerm > Term of
+            case NewTerm >= Term of
                 true ->
                     ResponsePid ! {success, true},
-                    loop(NewTerm);
                 false ->
-                    ResponsePid ! {success, false},
-                    loop(Term)
+                    ResponsePid ! {success, false}
             end;
+            loop(erlang:max(Term, NewTerm));
             
         {get, ResponsePid} ->
             ResponsePid ! {term, Term},
