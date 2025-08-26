@@ -12,7 +12,7 @@ startServer(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
 heartbeatRequest(Term, LeaderID) ->
     heartbeatRequestLoop ! {heartbeatRequest, Term, LeaderID, self()},
     receive 
-        {heartbeatResponse, Granted} -> Granted
+        {heartbeatResponse, Granted, ResponseTerm} -> {Granted, ResponseTerm}
     end.
 
 % Internal loop
@@ -22,40 +22,47 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
             % get our current term
             CurrentTerm = term:getTerm(TermPid, self()),
                 
-            if 
-                CurrentTerm > TermReq ->
+            case CurrentTerm > TermReq of
+                true ->
                     % stale request, not granting heartbeat
-                    ResponsePid ! {heartbeatResponse, false},
-                    loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid);
-                CurrentTerm < TermReq ->
-                    % update our term, revert to follower state, and reset our vote (to update it to the fresher term)
-                    case term:setTerm(TermPid, TermReq) of
-                        {ok, true} ->
-                            state:setFollower(StatePid, TermReq),
-                            electionTimer:resetTimer(ElectionTimerPid, TermReq),
-                            myVote:resetMyVote(MyVotePid, TermReq);
-                        {ok, false} -> % in the while, another request came in with >= term, ignore this one
-                            ResponsePid ! {heartbeatResponse, false},
-                            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid)
+                    ResponsePid ! {heartbeatResponse, false, CurrentTerm};
+                false ->
+                    case CurrentTerm < TermReq of
+                        true ->
+                            % update our term
+                            case term:setTerm(TermPid, TermReq) of
+                                {ok, true} ->
+                                    case state:setFollower(StatePid, TermReq) of
+                                        {ok, true} ->
+                                            % reset election timer
+                                            electionTimer:reset(ElectionTimerPid, TermReq);
+                                        _ ->
+                                            ok
+                                    end;
+                                {ok, false} -> 
+                                    % in the while, another request came in with > term, ignore this one
+                                    LatestTerm = term:getTerm(TermPid, self())
+                                    ResponsePid ! {heartbeatResponse, false, LatestTerm};        
+                            end;
+                        false ->
+                            % CurrentTerm == TermReq: proceed to set the current leader
+                            ok
                     end;
-                CurrentTerm == TermReq ->
-                    % proceed to set the current leader
-                    ok
+                    % try to set the current leader
+                    Success = 
+                        case LeaderID == state:setCurrentLeader(CurrentLeaderPid, TermReq, LeaderID) of
+                            {ok, true} ->
+                                % Valid heartbeat, reset the election timer and disallow votes
+                                electionTimer:resetTimer(ElectionTimerPid, TermReq),
+                                voteRequestLoop ! {allowVotes, false},
+                                true;
+                            _ ->
+                                false
+                        end,    
+                    ResponsePid ! {heartbeatResponse, Success, TermReq},
             end,
+            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid);
 
-            % try to set the current leader
-            Success = 
-                case LeaderID == state:setCurrentLeader(CurrentLeaderPid, TermReq, LeaderID) of
-                    true ->
-                        % Valid heartbeat, reset the election timer and disallow votes
-                        electionTimer:resetTimer(ElectionTimerPid, TermReq),
-                        voteRequestLoop ! {allowVotes, false},
-                        true;
-                    false ->
-                        false
-                end,    
-            ResponsePid ! {heartbeatResponse, Success},
-            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid)
         after ?MIN_HEARTBEAT_TIMEOUT ->
             % allow votes: possibly the leader is gone
             voteRequestLoop ! {allowVotes, true}

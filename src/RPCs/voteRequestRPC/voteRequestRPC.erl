@@ -21,45 +21,56 @@ loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes) ->
             case AllowVotes of
                 false ->
                     % votes not allowed, ignore the request
-                    ResponsePid ! {voteResponse, false},
-                    loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes);
+                    ResponsePid ! {voteResponse, false};
                 true ->
-                    % get our current term
-                    CurrentTerm = term:getTerm(TermPid, self()),
-                        
-                    if 
-                        CurrentTerm > TermReq ->
-                            % stale request, not granting vote
-                            ResponsePid ! {voteResponse, false},
-                            loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes);
-                        CurrentTerm > TermReq ->
-                            % update our term
-                            case term:setTerm(TermPid, TermReq) of 
+                    case state:getState(StatePid) of 
+                        {ok, Leader, _} when Leader == leader ->
+                            % we are the leader, ignore the request (AllowVotes should be false in this case)
+                            ResponsePid ! {voteResponse, false};
+                        _ ->
+                            % get our current term
+                            CurrentTerm = term:getTerm(TermPid, self()),
+                                
+                            case CurrentTerm > TermReq of
                                 true ->
-                                    % revert to follower state
-                                    state:setFollower(StatePid, TermReq),
-                                    electionTimer:reset(ElectionTimerPid, TermReq);
-                                    % proceed to set our vote (not necessary to reset myVote here)
-                                false -> % in the while, another request came in with >= term, ignore this one
-                                    ResponsePid ! {voteResponse, false},
-                                    loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes)
-                            end;
-                        CurrentTerm == TermReq ->
-                            % prooced to set our vote
-                            ok
-                    end,
-                    %try to set our vote (it will update myVote term automatically)
-                    case myVote:setMyVote(MyVotePid, CandidateID, TermReq) of
-                        false ->
-                            % not grant the vote
-                            ResponsePid ! {voteResponse, false},
-                            loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes);
-                        true ->
-                            % grant the vote
-                            ResponsePid ! {voteResponse, true},
-                            loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes)
+                                    % stale request, not granting vote
+                                    ResponsePid ! {voteResponse, false};
+                                false ->
+                                    case CurrentTerm > TermReq of
+                                        true ->
+                                            % update our term
+                                            case term:setTerm(TermPid, TermReq) of 
+                                            true ->
+                                                % revert to follower state
+                                                case state:setFollower(StatePid, TermReq) of 
+                                                    {ok, true} ->
+                                                        electionTimer:reset(ElectionTimerPid, TermReq);
+                                                    _ ->
+                                                        ok
+                                                end;
+                                                % proceed to set our vote
+                                            false ->     
+                                                % someone already updated the term, proceed to try to set our vote
+                                                ok
+                                            end;
+                                        _ ->
+                                            % prooced to set our vote
+                                            ok
+                                    end,
+                                    %try to set our vote
+                                    case myVote:setMyVote(MyVotePid, CandidateID, TermReq) of
+                                        false ->
+                                            % not grant the vote
+                                            ResponsePid ! {voteResponse, false};
+                                        true ->
+                                            % grant the vote
+                                            ResponsePid ! {voteResponse, true}
+                                    end
+                            end
                     end
-            end;
+            end,
+            loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes);
+
         {allowVotes, Value} ->
             loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, Value)
     end.
