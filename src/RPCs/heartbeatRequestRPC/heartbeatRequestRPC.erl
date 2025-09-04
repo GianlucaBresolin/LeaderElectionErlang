@@ -19,39 +19,27 @@ heartbeatRequest(Term, LeaderID) ->
 loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
     receive 
         {heartbeatRequest, TermReq, LeaderID, ResponsePid} ->
-            % get our current term
-            CurrentTerm = term:getTerm(TermPid, self()),
-                
-            case CurrentTerm > TermReq of
-                true ->
-                    % stale request, not granting heartbeat
-                    ResponsePid ! {heartbeatResponse, false, CurrentTerm};
-                false ->
-                    case CurrentTerm < TermReq of
+            % get our current term    
+            case term:getTerm(TermPid) of
+                CurrentTerm when CurrentTerm =< TermReq ->
+                    % update our term if needed (through lazy evaluation)
+                    case (CurrentTerm < TermReq) andalso term:setTerm(TermPid, TermReq) of
                         true ->
-                            % update our term
-                            case term:setTerm(TermPid, TermReq) of
-                                {ok, true} ->
-                                    case state:setFollower(StatePid, TermReq) of
-                                        {ok, true} ->
-                                            % reset election timer
-                                            electionTimer:reset(ElectionTimerPid, TermReq);
-                                        _ ->
-                                            ok
-                                    end;
-                                {ok, false} -> 
-                                    % in the while, another request came in with > term, ignore this one
-                                    LatestTerm = term:getTerm(TermPid, self())
-                                    ResponsePid ! {heartbeatResponse, false, LatestTerm};        
+                            case state:setFollower(StatePid, TermReq) of
+                                true ->
+                                    % reset election timer
+                                    electionTimer:reset(ElectionTimerPid, TermReq);
+                                _ ->
+                                    ok
                             end;
-                        false ->
-                            % CurrentTerm == TermReq: proceed to set the current leader
-                            ok
-                    end;
+                        _ -> 
+                            % in the while, another request came in with > term, ignore this one
+                            ResponsePid ! {heartbeatResponse, false, term:getTerm(TermPid)}        
+                    end,
                     % try to set the current leader
                     Success = 
-                        case LeaderID == state:setCurrentLeader(CurrentLeaderPid, TermReq, LeaderID) of
-                            {ok, true} ->
+                        case state:setCurrentLeader(CurrentLeaderPid, TermReq, LeaderID) of
+                            {LeaderName, LeaderTerm} when LeaderName == LeaderID, LeaderTerm == TermReq ->
                                 % Valid heartbeat, reset the election timer and disallow votes
                                 electionTimer:resetTimer(ElectionTimerPid, TermReq),
                                 voteRequestLoop ! {allowVotes, false},
@@ -59,11 +47,15 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
                             _ ->
                                 false
                         end,    
-                    ResponsePid ! {heartbeatResponse, Success, TermReq},
+                    ResponsePid ! {heartbeatResponse, Success, TermReq};
+                _ ->
+                    % stale request, not granting heartbeat
+                    ResponsePid ! {heartbeatResponse, false, term:getTerm(TermPid)}
             end,
-            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid);
+            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid)
 
         after ?MIN_HEARTBEAT_TIMEOUT ->
             % allow votes: possibly the leader is gone
-            voteRequestLoop ! {allowVotes, true}
+            voteRequestLoop ! {allowVotes, true},
+            loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid)
     end.

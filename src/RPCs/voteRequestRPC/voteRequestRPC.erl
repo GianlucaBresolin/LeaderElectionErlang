@@ -24,19 +24,19 @@ loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes) ->
                     ResponsePid ! {voteResponse, false};
                 true ->
                     case state:getState(StatePid) of 
-                        {ok, Leader, _} when Leader == leader ->
+                        {Leader, _} when Leader == leader ->
                             % we are the leader, ignore the request (AllowVotes should be false in this case)
                             ResponsePid ! {voteResponse, false};
                         _ ->
                             % get our current term
                             case term:getTerm(TermPid) of
-                                {ok, CurrentTerm} when CurrentTerm =< TermReq ->
+                                CurrentTerm when CurrentTerm =< TermReq ->
                                     % update our term if neeeded (through lazy evaluation)
                                     case (CurrentTerm < TermReq) andalso term:setTerm(TermPid, TermReq) of 
                                         true ->
                                             % revert to follower state
                                             case state:setFollower(StatePid, TermReq) of 
-                                                {ok, true} ->
+                                                true ->
                                                     electionTimer:reset(ElectionTimerPid, TermReq);
                                                 _ ->
                                                     ok

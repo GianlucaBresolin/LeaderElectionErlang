@@ -23,10 +23,10 @@ loop(Term) ->
         {set, NewTerm, ResponsePid} ->
             case NewTerm >= Term of
                 true ->
-                    ResponsePid ! {success, true},
+                    ResponsePid ! {success, true};
                 false ->
                     ResponsePid ! {success, false}
-            end;
+            end,
             loop(erlang:max(Term, NewTerm));
             
         {get, ResponsePid} ->
