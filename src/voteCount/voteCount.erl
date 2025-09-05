@@ -49,7 +49,7 @@ loop(VoteCount, Term, VoterMap, LeaderFlag) ->
                                     end
                             end
                     end
-            end;
+            end
     end.
 
 % Helper function

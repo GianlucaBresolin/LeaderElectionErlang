@@ -72,9 +72,9 @@ loop(MinTimeout, MaxTimeout, TimerRef, Term, ResponsePid) ->
                 false -> 
                     % stale request or no timer is currently running, ignore it
                     From ! {stopTimerSuccess, false},
-                    UpdatedTimerRef = TimerRef;
+                    UpdatedTimerRef = TimerRef
             end,
-            loop(MinTimeout, MaxTimeout, UpdatedTimerRef, erlang:max(TermReq, Term), ResponsePid)
+            loop(MinTimeout, MaxTimeout, UpdatedTimerRef, erlang:max(TermReq, Term), ResponsePid);
 
         electionTimeout -> 
             % provide the election timeout signal and election term
