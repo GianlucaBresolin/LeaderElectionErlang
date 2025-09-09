@@ -7,9 +7,14 @@ Concurrency is achieved through actors.
 
 The leader election model is based on the *Raft Consensus Algorithm* ([Raft paper](https://raft.github.io/raft.pdf)).
 
-Build
+Build:
 -----
 
     $ rebar3 compile
+
+To run a cluster of nodes with *Docker*:
+-----
+    $ docker build -t leaderelectionerlang .
+    $ docker-compose up --build
 
 ![Erlang](https://img.shields.io/badge/Erlang-28.0-blue)

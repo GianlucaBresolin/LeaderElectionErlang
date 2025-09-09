@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  server1:
+    image: leaderelectionerlang
+    container_name: node1
+    hostname: node1
+    env_file:
+      - .env
+    command: >
+      sh -c "rebar3 shell --sname node1 --config config/sys.config --setcookie $ERLANG_COOKIE"
+    networks:
+      - erlang_net
+    
+  server2:
+    image: leaderelectionerlang
+    container_name: node2
+    hostname: node2
+    env_file:
+      - .env
+    command: >
+      sh -c "rebar3 shell --sname node2 --config config/sys.config --setcookie $ERLANG_COOKIE"
+    networks:
+      - erlang_net
+  
+  server3:
+    image: leaderelectionerlang
+    container_name: node3
+    hostname: node3
+    env_file:
+      - .env
+    command: >
+      sh -c "rebar3 shell --sname node3 --config config/sys.config --setcookie $ERLANG_COOKIE"
+    networks:
+      - erlang_net
+
+networks:
+  erlang_net:
+    driver: bridge
