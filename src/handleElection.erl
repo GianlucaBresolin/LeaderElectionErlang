@@ -5,75 +5,73 @@
 % API
 handleElection(ElectionTerm, ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, Nodes, BecomeLeaderPid) ->
     % check if the node is already a leader
-    case state:getState(StatePid, ElectionTerm) of
+    case state:getState(StatePid) of
         {leader, _} ->
             % already the leader, exit election
             exit({error, "Already a leader."});
-        {_, StateTerm} when StateTerm =/= ElectionTerm ->
-            exit({error, "State term mismatch."});
+        {_, StateTerm} when StateTerm > ElectionTerm ->
+            exit({error, "Stale election term."});
         _ -> 
             % proceed with the election process
             ok
     end,
-    
-    % reset the election timer to resolve split-votes
-    electionTimer:resetTimer(ElectionTimerPid, ElectionTerm),
 
-    % set the new term
+    io:format("NODE ~s START ELECTION FOR TERM ~p~n", [MyID, ElectionTerm]),
+    
+    % set the term for the election
     case term:setTerm(TermPid, ElectionTerm) of
-        {ok, true} ->
-            % term set successfully, proceed
-            % (not necessary to reset  myVote here)
+        true ->
             ok;
-        {ok, false} ->
+        false ->
             % term not set, exit
             exit({error, "Failed to set term"})
     end,
 
+    % reset the election timer to resolve possible split-votes
+    electionTimer:resetTimer(ElectionTimerPid, ElectionTerm),   
+
     % become a candidate 
     case state:setCandidate(StatePid, ElectionTerm) of
         false ->
-            % not a candidate, exit
+            % failed to become candidate, exit
             exit({error, "Failed to become candidate"});
         true ->
             % candidate state set successfully, proceed
             ok
     end,
 
-    % reset the vote count
-    voteCount:reset(VoteCountPid, ElectionTerm),
-
     % set my vote for self (it will update myVote term automatically)
     case myVote:setMyVote(MyVotePid, MyID, ElectionTerm) of
-        false ->
-            state:setFollower(StatePid, ElectionTerm);
+        true ->
+            % add our vote to the vote count
+            voteCount:addVote(VoteCountPid, MyID, ElectionTerm, BecomeLeaderPid);
         _ ->
             ok
     end,
 
-    % add my vote to the vote count
-    voteCount:addVote(VoteCountPid, MyID, ElectionTerm, BecomeLeaderPid),
-
     % send vote requests to all other nodes (in parallel)
-    [spawn(fun() -> askVoteLoop(NodeID, MyID, ElectionTerm, VoteCountPid, BecomeLeaderPid) end) || NodeID <- Nodes],
+    [spawn(fun() -> askVoteLoop(NodeID, MyID, ElectionTerm, VoteCountPid, BecomeLeaderPid) end) || {NodeID} <- Nodes],
     ok.
 
 % Internal stuff
 askVoteLoop(NodeID, CandidateID, Term, VoteCountPid, BecomeLeaderPid) ->
-    Result = rpc:call(NodeID, voteRequestRPC, voteRequest, [Term, CandidateID]),
-    case Result of 
-        {badrpc, _} ->
-            % retry (loop back to askVote)
-            timer:sleep(?RETRAY_DELAY), % avoid busy waiting
-            askVoteLoop(NodeID, CandidateID, Term, VoteCountPid, BecomeLeaderPid);
-        {ok, Granted} ->
-            case Granted of
+    case NodeID =/= CandidateID of 
+        true ->
+            RemoteNode = NodeID ++ "@" ++ NodeID,
+            Result = rpc:call(list_to_atom(RemoteNode), voteRequestRPC, voteRequest, [Term, CandidateID]),
+            case Result of 
+                {badrpc, _} ->
+                    % retry (loop back to askVote)
+                    timer:sleep(?RETRAY_DELAY), % avoid busy waiting
+                    askVoteLoop(NodeID, CandidateID, Term, VoteCountPid, BecomeLeaderPid);
                 true ->
                     % vote granted: add the vote to the count
-                    voteCount:addVote(VoteCountPid, NodeID, Term, BecomeLeaderPid),
-                    ok;
+                    voteCount:addVote(VoteCountPid, NodeID, Term, BecomeLeaderPid);
                 _ ->
                     % vote not granted
                     ok
-            end
+            end;
+        _ ->
+            % already voted for self
+            ok
     end.
