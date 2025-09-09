@@ -4,8 +4,7 @@
 % API
 startServer(TermPid, StatePid, ElectionTimerPid, MyVotePid) ->
     Pid = spawn_link(fun() -> loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, true) end),
-    register(voteRequestLoop, Pid),
-    {ok, Pid}.
+    register(voteRequestLoop, Pid).
 
 % RPC
 voteRequest(Term, CandidateID) ->
@@ -51,6 +50,7 @@ loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes) ->
                                             ResponsePid ! {voteResponse, false};
                                         true ->
                                             % grant the vote
+                                            io:format("Node grant vote to ~s for term ~p~n", [CandidateID, TermReq]),
                                             ResponsePid ! {voteResponse, true}
                                     end;
                                 _ ->

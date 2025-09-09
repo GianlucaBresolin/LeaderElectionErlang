@@ -5,8 +5,7 @@
 % API
 startServer(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
     Pid = spawn_link(fun() -> loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) end),
-    register(heartbeatRequestLoop, Pid),
-    {ok, Pid}.
+    register(heartbeatRequestLoop, Pid).
 
 % RPC
 heartbeatRequest(Term, LeaderID) ->
@@ -33,20 +32,19 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
                                     ok
                             end;
                         _ -> 
-                            % in the while, another request came in with > term, ignore this one
-                            ResponsePid ! {heartbeatResponse, false, term:getTerm(TermPid)}        
+                            ok
                     end,
                     % try to set the current leader
                     Success = 
-                        case state:setCurrentLeader(CurrentLeaderPid, TermReq, LeaderID) of
-                            {LeaderName, LeaderTerm} when LeaderName == LeaderID, LeaderTerm == TermReq ->
+                        case currentLeader:setCurrentLeader(CurrentLeaderPid, TermReq, LeaderID) of
+                            {LeaderName, LeaderTerm} when LeaderName == LeaderID andalso LeaderTerm == TermReq ->
                                 % Valid heartbeat, reset the election timer and disallow votes
                                 electionTimer:resetTimer(ElectionTimerPid, TermReq),
                                 voteRequestLoop ! {allowVotes, false},
                                 true;
                             _ ->
                                 false
-                        end,    
+                        end,  
                     ResponsePid ! {heartbeatResponse, Success, TermReq};
                 _ ->
                     % stale request, not granting heartbeat
