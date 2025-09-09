@@ -8,7 +8,20 @@
         stdlib
     ]},
     {env, []},
-    {modules, []},
+    {modules, [
+        leaderElectionNode_app,
+        leaderElectionNode_sup,
+        currentLeader,
+        electionTimer,
+        myVote,
+        heartbeatRequestRPC,
+        voteRequestRPC,
+        state,
+        term,
+        voteCount,
+        handleElection,
+        handleLeadership
+        ]},
     {licenses, ["Apache-2.0"]},
     {links, []}
  ]}.

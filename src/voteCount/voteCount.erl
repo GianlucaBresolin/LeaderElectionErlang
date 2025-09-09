@@ -36,7 +36,6 @@ loop(VoteCount, Term, VoterMap, LeaderFlag) ->
                                     % already voted, ignore
                                     loop(UpdatedVoteCount, UpdatedTerm, UpdatedVoterMap, LeaderFlag);
                                 0 -> 
-                                    io:format("NODE ~s GOT VOTE FROM ~s FOR TERM ~p~n", [VoterID, VoterID, UpdatedTerm]),
                                     NewVoteCount = UpdatedVoteCount + 1,
                                     FinalVoterMap = UpdatedVoterMap#{VoterID := 1},
                                     case NewVoteCount >= maps:size(UpdatedVoterMap) div 2 + 1 andalso not UpdatedLeaderFlag of 
