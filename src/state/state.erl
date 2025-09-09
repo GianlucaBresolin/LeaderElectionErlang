@@ -53,15 +53,15 @@ loop(State, Term) ->
             UpdatedState =
                 if
                     NewTerm > Term ->
-                        ResponsePid ! {becomeCandidate, true},
+                        ResponsePid ! {becomeCandidateSuccess, true},
                         candidate;
                     NewTerm == Term ->
                         case State of
                             follower -> 
-                                ResponsePid ! {becomeCandidate, true},
+                                ResponsePid ! {becomeCandidateSuccess, true},
                                 candidate;
                             _ -> 
-                                ResponsePid ! {becomeCandidate, false}, 
+                                ResponsePid ! {becomeCandidateSuccess, false}, 
                                 State
                         end;
                     NewTerm < Term ->
@@ -73,20 +73,20 @@ loop(State, Term) ->
             UpdatedState =
                 if 
                     NewTerm > Term ->
-                        ResponsePid ! {becomeLeader, true},
+                        ResponsePid ! {becomeLeaderSuccess, true},
                         leader;
                     NewTerm == Term ->
                         case State =/= leader of
                             true ->
-                                ResponsePid ! {becomeLeader, true};
+                                ResponsePid ! {becomeLeaderSuccess, true};
                             false ->
                                 % already leader
-                                ResponsePid ! {becomeLeader, false} 
+                                ResponsePid ! {becomeLeaderSuccess, false} 
                         end,
                         leader;
                     NewTerm < Term ->
                         % stale request
-                        ResponsePid ! {becomeLeader, false}, 
+                        ResponsePid ! {becomeLeaderSuccess, false}, 
                         State                    
                 end,
             loop(UpdatedState, erlang:max(Term, NewTerm));
