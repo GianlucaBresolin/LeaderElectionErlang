@@ -3,8 +3,7 @@
 
 % API
 start(ConfigurationList) ->
-    VoterList = lists:map(fun(VoterID) -> {VoterID, 0} end, ConfigurationList),
-    VoterMap = maps:from_list(VoterList),
+    VoterMap = maps:from_list([{VoterID, 0} || {VoterID} <- ConfigurationList]),
     spawn_link( fun() -> loop(0, 0, VoterMap, false) end ).
 
 addVote(Pid, VoterID, Term, BecomeLeaderPid) ->
@@ -20,13 +19,13 @@ loop(VoteCount, Term, VoterMap, LeaderFlag) ->
                     % stale request, ignore it
                     loop(VoteCount, Term, VoterMap, LeaderFlag);
                 false ->
-                    {UpdatedTerm, UpdatedVoterMap, UpdatedLeaderFlag} =
+                    {UpdatedVoteCount, UpdatedTerm, UpdatedVoterMap, UpdatedLeaderFlag} =
                         case TermReq > Term of
                             true ->
                                 % reset the vote count and update the term and leader flag
-                                {TermReq, resetVoterMap(VoterMap), false};
+                                {0, TermReq, resetVoterMap(VoterMap), false};
                             false ->  % TermReq == Term
-                                {Term, VoterMap, LeaderFlag}
+                                {VoteCount, Term, VoterMap, LeaderFlag}
                         end,
                     case catch maps:get(VoterID, UpdatedVoterMap) of
                         {'EXIT', {badkey, _}} ->
@@ -35,17 +34,18 @@ loop(VoteCount, Term, VoterMap, LeaderFlag) ->
                             case VotedFlag of
                                 1 ->
                                     % already voted, ignore
-                                    loop(VoteCount, UpdatedTerm, UpdatedVoterMap, LeaderFlag);
+                                    loop(UpdatedVoteCount, UpdatedTerm, UpdatedVoterMap, LeaderFlag);
                                 0 -> 
-                                    UpdatedVoteCount = VoteCount + 1,
+                                    io:format("NODE ~s GOT VOTE FROM ~s FOR TERM ~p~n", [VoterID, VoterID, UpdatedTerm]),
+                                    NewVoteCount = UpdatedVoteCount + 1,
                                     FinalVoterMap = UpdatedVoterMap#{VoterID := 1},
-                                    case UpdatedVoteCount >= maps:size(UpdatedVoterMap) div 2 + 1 andalso not UpdatedLeaderFlag of 
+                                    case NewVoteCount >= maps:size(UpdatedVoterMap) div 2 + 1 andalso not UpdatedLeaderFlag of 
                                         true ->
                                             % become leader
                                             BecomeLeaderPid ! {becomeLeaderSignal, UpdatedTerm},
-                                            loop(UpdatedVoteCount, UpdatedTerm, FinalVoterMap, true);
+                                            loop(NewVoteCount, UpdatedTerm, FinalVoterMap, true);
                                         false ->
-                                            loop(UpdatedVoteCount, UpdatedTerm, FinalVoterMap, UpdatedLeaderFlag)
+                                            loop(NewVoteCount, UpdatedTerm, FinalVoterMap, UpdatedLeaderFlag)
                                     end
                             end
                     end
