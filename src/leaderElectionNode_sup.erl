@@ -32,9 +32,11 @@ init([]) ->
         intensity => 0,
         period => 1
     },
+    [NodeId | _] = string:tokens(atom_to_list(node()), "@"),
+    {ok, ClusterNodes} = application:get_env(leaderElectionNode, cluster_nodes),
     ChildSpecs = [
         #{id => node,
-          start => {leaderElectionNode_app, init, [NodeID, ConfigurationList]},
+          start => {leaderElectionNode_app, start_node, [NodeId, ClusterNodes]},
           restart => permanent,
           shutdown => infinity,
           type => worker,
