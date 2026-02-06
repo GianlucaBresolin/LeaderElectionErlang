@@ -17,6 +17,7 @@ stop(_State) ->
 
 % Internal function
 start_node(MyID, ConfigurationList) ->
+    timer:sleep(1000), % give some time for the servers to start before printing the initialization message
     % Initialize node's components
     TermPid = term:start(),
     StatePid = state:start(),
@@ -29,7 +30,7 @@ start_node(MyID, ConfigurationList) ->
     voteRequestRPC:startServer(TermPid, StatePid, ElectionTimerPid, MyVotePid), 
     heartbeatRequestRPC:startServer(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid), 
 
-    io:format("NODE ~p INITIALIZED~n", [MyID]), 
+    io:format("~p initialized ~n", [MyID]), 
 
     % call the main loop to handle elections and leaderships
     loop(ElectionTimerPid, TermPid, StatePid, VoteCountPid, MyVotePid, MyID, ConfigurationList).

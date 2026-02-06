@@ -12,7 +12,7 @@ handleLeadership(ElectionTimerPid, StatePid, TermPid, Nodes, Term, MyID) ->
     case state:setLeader(StatePid, Term) of
         false ->
             % restart the election timer before exiting
-            electionTimer:reset(ElectionTimerPid, Term),
+            electionTimer:resetTimer(ElectionTimerPid, Term),
             exit({error, "Failed to set leader state"});
         true ->
             % leader state set successfully, proceed

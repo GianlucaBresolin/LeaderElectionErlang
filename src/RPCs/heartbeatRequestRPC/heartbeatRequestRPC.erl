@@ -27,7 +27,7 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
                             case state:setFollower(StatePid, TermReq) of
                                 true ->
                                     % reset election timer
-                                    electionTimer:reset(ElectionTimerPid, TermReq);
+                                    electionTimer:resetTimer(ElectionTimerPid, TermReq);
                                 _ ->
                                     ok
                             end;
@@ -41,6 +41,7 @@ loop(TermPid, StatePid, CurrentLeaderPid, MyVotePid, ElectionTimerPid) ->
                                 % Valid heartbeat, reset the election timer and disallow votes
                                 electionTimer:resetTimer(ElectionTimerPid, TermReq),
                                 voteRequestLoop ! {allowVotes, false},
+                                io:format("Heartbeat granted to leader ~p for term ~p~n", [LeaderID, TermReq]),
                                 true;
                             _ ->
                                 false

@@ -40,6 +40,7 @@ loop(VoteCount, Term, VoterMap, LeaderFlag) ->
                                     FinalVoterMap = UpdatedVoterMap#{VoterID := 1},
                                     case NewVoteCount >= maps:size(UpdatedVoterMap) div 2 + 1 andalso not UpdatedLeaderFlag of 
                                         true ->
+                                            io:format("Reached majority of votes in the cluster.~n"),
                                             % become leader
                                             BecomeLeaderPid ! {becomeLeaderSignal, UpdatedTerm},
                                             loop(NewVoteCount, UpdatedTerm, FinalVoterMap, true);

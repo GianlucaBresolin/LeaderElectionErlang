@@ -36,7 +36,7 @@ loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes) ->
                                             % revert to follower state
                                             case state:setFollower(StatePid, TermReq) of 
                                                 true ->
-                                                    electionTimer:reset(ElectionTimerPid, TermReq);
+                                                    electionTimer:resetTimer(ElectionTimerPid, TermReq);
                                                 _ ->
                                                     ok
                                             end;
@@ -47,6 +47,7 @@ loop(TermPid, StatePid, ElectionTimerPid, MyVotePid, AllowVotes) ->
                                     case myVote:setMyVote(MyVotePid, CandidateID, TermReq) of
                                         false ->
                                             % not grant the vote
+                                            io:format("Node denies vote to ~s for term ~p~n", [CandidateID, TermReq]),
                                             ResponsePid ! {voteResponse, false};
                                         true ->
                                             % grant the vote
